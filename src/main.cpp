@@ -105,7 +105,7 @@ void setup() {
     pinMode(LED_R4, INPUT);
 
     Serial.begin(9600);
-    Serial.println("Start code");
+    Serial.println("Start code block");
 }
 
 uint32_t start_b = 0;
