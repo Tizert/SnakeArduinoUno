@@ -29,6 +29,7 @@ const uint_fast8_t OFFSET_XY = 48;
 const uint8_t ROWS = 5;
 const uint8_t COLUMNS = 5;
 enum Direction {None, Up, Down, Left, Right};
+uint8_t actualDirection = Direction::Right;
 
 uint32_t start_a = 0;
 uint32_t start_b = 0;
@@ -90,30 +91,29 @@ void sosok_direction() {
     yAxis = map(yAxis, 0, 169, 0, 255);
 
     uint8_t nowDirection = determineDirection(xAxis, yAxis); // Direction get
+    if (nowDirection == Direction::None || actualDirection == nowDirection) {
+        return;
+    }
 
-    if (last_direction != nowDirection){
-        my_printf("X axis is =%d Y axis is %d\r\n", xAxis, yAxis);
-        switch (nowDirection)
-        {
-        case Direction::Up :
-            currRow = (currRow + 1) % ROWS;
-            break;
-        case Direction::Down :
-            currRow = (currRow - 1) < 0 ? ROWS - 1 : currRow - 1;
-            break;
+    my_printf("Changed direction from %d, to %d\r\n", actualDirection, nowDirection);
+    actualDirection = nowDirection;
+}
+
+void light_snake_field() {
+    switch(actualDirection) {
         case Direction::Right :
             currCol = (currCol + 1) % COLUMNS;
             break;
         case Direction::Left :
-            currCol = (currCol - 1) < 0 ? COLUMNS - 1 : currCol - 1;
+            currCol = currCol == 0 ? (COLUMNS - 1) : (currCol - 1);
             break;
-        case Direction::None :
+        case Direction::Up :
+            currRow = (currRow + 1) % ROWS;
             break;
-        }
-        Serial.print(nowDirection);
-        Serial.print("\n");
-        last_direction = nowDirection;
-    }   
+            case Direction::Down :
+            currRow = currRow == 0 ? (ROWS - 1) : (currRow - 1);
+            break;
+    }
 }
 
 void setup() {
@@ -139,14 +139,15 @@ void setup() {
 }
 
 void loop() {
-    if (millis() - start_a >= 99) {
+    if (millis() - start_a >= 100) {
         sosok_direction();
         start_a = millis();
     }
 
-    led_matrix(currRow, currCol);
-
-    if (millis() - start_b >= 1000) {
+    if (millis() - start_b >= 200) {
+        light_snake_field();
         start_b = millis();
     }
+
+    led_matrix(currRow, currCol);
 }
