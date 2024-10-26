@@ -1,7 +1,4 @@
 #include <Arduino.h>
-#include <cppQueue.h>
-
-#define	IMPLEMENTATION	FIFO
 
 #define LED_C1 2
 #define LED_C2 4
@@ -19,7 +16,24 @@
 #define VRX A0
 #define VRY A1
 
-cppQueue	q_snake(25, 25, IMPLEMENTATION);
+struct doublyLinkedListElement
+{
+    uint32_t *currElement;
+    uint32_t *nextElement;
+    uint32_t *prevElement;
+};
+
+struct doublyLinkedList {
+    size_t size;
+    uint32_t head;
+    uint32_t tail;
+    void insertElement(){
+        
+    }
+    void deleteElement(){
+
+    }
+};
 
 uint8_t d_columns[] = {LED_C1, LED_C2, LED_C3, LED_C4, LED_C5};
 uint8_t d_rows[]    = {LED_R1, LED_R2, LED_R3, LED_R4, LED_R5};
@@ -37,6 +51,10 @@ uint8_t last_direction = 0;
 
 uint8_t currRow = 0;
 uint8_t currCol = 0;
+
+uint8_t food_x = random(0, ROWS*COLUMNS - 1);
+uint8_t food_y = random(0, ROWS*COLUMNS - 1);
+uint8_t food_point;
 
 void my_printf(const char *format, ...) {
     const uint8_t MAX_STRING_SIZE = 64;
@@ -60,10 +78,10 @@ Direction determineDirection(int x, int y) {
         xDir = Direction::Down;
     }
     if (y > MIDDLE_XY + OFFSET_XY) {
-        yDir = Direction::Right;
+        yDir = Direction::Left;
     }
     if (y < MIDDLE_XY - OFFSET_XY) {
-        yDir = Direction::Left;
+        yDir = Direction::Right;
     }
 
     if (yDir == Direction::None) {
@@ -148,6 +166,8 @@ void loop() {
         light_snake_field();
         start_b = millis();
     }
+
+
 
     led_matrix(currRow, currCol);
 }
