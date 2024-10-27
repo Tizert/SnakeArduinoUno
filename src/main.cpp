@@ -6,55 +6,106 @@
 #define LED_C4 8
 #define LED_C5 10
 
-#define LED_R1 3 
+#define LED_R1 3
 #define LED_R2 5
 #define LED_R3 7
-#define LED_R4 9 
-#define LED_R5 11 
+#define LED_R4 9
+#define LED_R5 11
 
 #define SWITCH 13
-#define VRX A0
-#define VRY A1
+#define VRX    A0
+#define VRY    A1
+typedef struct {
+    uint32_t x;
+    uint32_t y;
+    elem *nextElement;
+    elem *prevElement;
+} elem;
 
-struct doublyLinkedListElement
-{
-    uint32_t *currElement;
-    uint32_t *nextElement;
-    uint32_t *prevElement;
-};
+elem *head  = NULL;
+elem *tail  = NULL;
+size_t size = 0;
 
-struct doublyLinkedList {
-    size_t size;
-    uint32_t head;
-    uint32_t tail;
-    void insertElement(){
-        
+uint8_t food_x = random(0, COLUMNS);
+uint8_t food_y = random(0, ROWS);
+
+void placeSnake(void) {
+    elem *snakeEl3 = new elem;
+    elem *snakeEl2 = new elem;
+    elem *snakeEl1 = new elem;
+    snakeEl3->x    = d_columns[0]; // хвост первоначальной змейки
+    snakeEl3->y    = d_rows[0];    //
+    snakeEl2->x    = d_columns[1]; // тело первоначальной змейки
+    snakeEl2->y    = d_rows[0];    //
+    snakeEl1->x    = d_columns[2]; // голова первоначальной змейки
+    snakeEl1->y    = d_rows[0];    //
+    insInTail(snakeEl1);
+    insInTail(snakeEl2);
+    insInTail(snakeEl3);
+}
+
+void placeFood(void) {
+    for (elem *curr = head; curr != NULL;) {
+        if ((curr->x == food_x) && (curr->y == food_y)) {
+            food_x = random(0, COLUMNS);
+            food_y = random(0, ROWS);
+            curr   = head;
+            continue;
+        }
+        curr = curr->nextElement;
     }
-    void deleteElement(){
+    return;
+}
 
+void insInTail(elem *el) {
+    if (el == NULL) {
+        return;
     }
-};
+    if (head == NULL) {
+        el->nextElement = NULL;
+        el->prevElement = NULL;
+        head            = el;
+        tail            = el;
+        size            = 1;
+    }
+    else {
+        el->nextElement   = NULL;
+        el->prevElement   = tail;
+        tail->nextElement = el;
+        tail              = el;
+        size++;
+    }
+}
+void delTail(void) {
+    if (tail == NULL) {
+        return;
+    }
+    else {
+        tail              = tail->prevElement;
+        tail->nextElement = NULL;
+        size--;
+    }
+}
+struct doublyLinkedList {};
+
+void appleInHead() {}
 
 uint8_t d_columns[] = {LED_C1, LED_C2, LED_C3, LED_C4, LED_C5};
 uint8_t d_rows[]    = {LED_R1, LED_R2, LED_R3, LED_R4, LED_R5};
 
-const uint_fast8_t MIDDLE_XY = 128;
-const uint_fast8_t OFFSET_XY = 48;
-const uint8_t ROWS = 5;
-const uint8_t COLUMNS = 5;
-enum Direction {None, Up, Down, Left, Right};
+const uint8_t MIDDLE_XY = 128;
+const uint8_t OFFSET_XY = 48;
+const uint8_t ROWS      = 5;
+const uint8_t COLUMNS   = 5;
+enum Direction { None, Up, Down, Left, Right };
 uint8_t actualDirection = Direction::Right;
 
-uint32_t start_a = 0;
-uint32_t start_b = 0;
+uint32_t start_a       = 0;
+uint32_t start_b       = 0;
 uint8_t last_direction = 0;
 
 uint8_t currRow = 0;
 uint8_t currCol = 0;
-
-uint8_t food_x = random(0, ROWS*COLUMNS - 1);
-uint8_t food_y = random(0, ROWS*COLUMNS - 1);
-uint8_t food_point;
 
 void my_printf(const char *format, ...) {
     const uint8_t MAX_STRING_SIZE = 64;
@@ -86,7 +137,8 @@ Direction determineDirection(int x, int y) {
 
     if (yDir == Direction::None) {
         return xDir;
-    } else if (xDir == Direction::None) {
+    }
+    else if (xDir == Direction::None) {
         return yDir;
     }
 
@@ -103,10 +155,10 @@ void led_matrix(uint8_t r, uint8_t c) {
 }
 
 void sosok_direction() {
-    uint8_t xAxis = analogRead(VRX); 
+    uint8_t xAxis = analogRead(VRX);
     uint8_t yAxis = analogRead(VRY);
-    xAxis = map(xAxis, 0, 169, 0, 255);
-    yAxis = map(yAxis, 0, 169, 0, 255);
+    xAxis         = map(xAxis, 0, 169, 0, 255);
+    yAxis         = map(yAxis, 0, 169, 0, 255);
 
     uint8_t nowDirection = determineDirection(xAxis, yAxis); // Direction get
     if (nowDirection == Direction::None || actualDirection == nowDirection) {
@@ -118,19 +170,19 @@ void sosok_direction() {
 }
 
 void light_snake_field() {
-    switch(actualDirection) {
-        case Direction::Right :
-            currCol = (currCol + 1) % COLUMNS;
-            break;
-        case Direction::Left :
-            currCol = currCol == 0 ? (COLUMNS - 1) : (currCol - 1);
-            break;
-        case Direction::Up :
-            currRow = (currRow + 1) % ROWS;
-            break;
-            case Direction::Down :
-            currRow = currRow == 0 ? (ROWS - 1) : (currRow - 1);
-            break;
+    switch (actualDirection) {
+    case Direction::Right:
+        currCol = (currCol + 1) % COLUMNS;
+        break;
+    case Direction::Left:
+        currCol = currCol == 0 ? (COLUMNS - 1) : (currCol - 1);
+        break;
+    case Direction::Up:
+        currRow = (currRow + 1) % ROWS;
+        break;
+    case Direction::Down:
+        currRow = currRow == 0 ? (ROWS - 1) : (currRow - 1);
+        break;
     }
 }
 
@@ -154,6 +206,9 @@ void setup() {
 
     Serial.begin(9600);
     Serial.println("Start code block");
+
+    placeSnake();
+    placeFood();
 }
 
 void loop() {
@@ -166,8 +221,6 @@ void loop() {
         light_snake_field();
         start_b = millis();
     }
-
-
 
     led_matrix(currRow, currCol);
 }
