@@ -386,9 +386,10 @@ void loop() {
         if (millis() - start_b >= 200) {
             turnSnake();
             moveSnake(headDirection);
-            lightSnakeAndFood();
             start_b = millis();
         }
+        
+        lightSnakeAndFood();
     } else if (millis() - start_end_game >= 500) {
         if (size > 0) {
             delTail();
