@@ -13,6 +13,7 @@
 // uint32_t
 // uint64_t
 
+
 void my_printf(const char *format, ...) {
     const uint8_t MAX_STRING_SIZE = 64;
     char buf[MAX_STRING_SIZE];
@@ -23,6 +24,7 @@ void my_printf(const char *format, ...) {
     va_end(args);
     Serial.print(buf);
 }
+
 
 #define C1 8
 #define C2 9
