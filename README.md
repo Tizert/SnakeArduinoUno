@@ -32,15 +32,17 @@ pio run
 ## Current status
 
 - Build works
-- Upload to board is not checked yet
-- Hardware behavior is not checked yet on the new laptop
+- Upload to Arduino Uno works
+- LED matrix output works
+- Game currently does not start correctly on hardware
+- Current behavior: firmware appears to enter the losing screen/state immediately after startup
+- Joystick, food generation, and collision behavior need verification
 - Most code is currently in `src/main.cpp`
 - Refactoring plan is not written yet
 
 ## Next steps
 
-- Check upload to Arduino Uno
-- Check joystick and LED matrix behavior
+- Check joystick and LED matrix behavior on real hardware
 - Add wiring notes
-- Add `CHANGELOG.md`
+- Update `CHANGELOG.md` as the project changes
 - Prepare a small refactoring plan

@@ -41,11 +41,12 @@ The goal is not only to make the game work, but to organize it as a maintainable
 - PlatformIO build on new laptop: yes
 - Game builds: yes
 - Game uploads to board: yes
-- Snake moves: not checked yet
-- Joystick input works: not checked yet
-- Food generation works: not checked yet
-- Collision detection works: not checked yet
-- Score exists: not checked yet
+- LED matrix works: yes
+- Snake starts: no
+- Joystick input works: not verified
+- Food generation works: not verified
+- Collision detection works: not verified
+- Score exists: not verified
 - LCD support exists: planned
 
 ## Build result on new laptop
@@ -68,14 +69,19 @@ PlatformIO upload completed successfully.
 
 ## Known problems
 
-- `PROJECT_STATUS.md` was initially added as an empty file and then filled in a follow-up commit
-- Root `README.md` is missing
-- `CHANGELOG.md` is missing
 - Project versioning is not formalized yet
 - Most or all firmware code is currently located in `src/main.cpp`
 - Repository structure needs documentation
 - Minimal refactoring plan is not written yet
 - `src/main.cpp`: `turnSnake()` does not explicitly handle enum value `None` in a `switch` statement.
+- Current firmware builds and uploads, but the game does not start correctly on hardware.
+- After startup, the game appears to enter the losing screen/state immediately.
+- Several gameplay mechanisms exist in code, but their integration needs verification:
+  - food generation
+  - snake body tracking
+  - direction handling
+  - food eating check
+  - win/lose screen rendering
 
 ## Block 0 goal
 
