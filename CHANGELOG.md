@@ -13,6 +13,9 @@ All notable changes to this project will be documented in this file.
 ### Verified
 
 - Confirmed that the project builds successfully with PlatformIO for Arduino Uno.
+- Confirmed successful upload to Arduino Uno from the new laptop.
+- Confirmed PlatformIO auto-detected the board on COM5.
+- Confirmed flash write and verification completed successfully.
 
 ## [0.1.0] - 2026-06-05
 
