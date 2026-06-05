@@ -55,11 +55,16 @@ void my_printf(const char *format, ...) {
 }
 
 void printSnake(){
-    for (elem *curr = head; curr != NULL;){
+    uint8_t count = 0;
+    for (elem *curr = head; curr != NULL && count < 20;){
         my_printf("(%d,%d)->", curr->x ,curr->y);
         curr= curr->nextElement;
+        count++;
     }
     my_printf("\r\n");
+    if (count == 20){
+        Serial.print("printSnake stopped: possible cycle\r\n");
+    }
     return;
 };
 
@@ -115,7 +120,7 @@ my_printf("Start placeFood\r\n");
         }
         curr = curr->nextElement;
     }
-my_printf("Before return curr placeFood\r\n");
+my_printf("Before return curr placeFood\r\nNew food %d,%d\r\n", food_x, food_y);
     return;
 }
 
@@ -132,20 +137,54 @@ my_printf("Start delTail\r\n");
 my_printf("End delTail\r\n");
 }
 
-bool appleNotInHead(elem *head) {//проверка события что змейка съела яблоко и прирост тела
+bool appleNotInHead(elem *newHead) {//проверка события что змейка съела яблоко и прирост тела
 my_printf("Start appleNotInHead\r\n");
-    if (head->x == food_x && head->y == food_y) { //если координаты головы и координаты еды совпадают
+
+int newHeadX = newHead->x;
+int newHeadY = newHead->y;
+int currentFoodX = food_x;
+int currentFoodY = food_y;
+
+bool sameX = (newHeadX == currentFoodX);
+bool sameY = (newHeadY == currentFoodY);
+bool eaten = sameX && sameY;
+
+Serial.print("newHeadX = ");
+Serial.println(newHeadX);
+
+Serial.print("newHeadY = ");
+Serial.println(newHeadY);
+
+Serial.print("currentFoodX = ");
+Serial.println(currentFoodX);
+
+Serial.print("currentFoodY = ");
+Serial.println(currentFoodY);
+
+Serial.print("sameX = ");
+Serial.println(sameX);
+
+Serial.print("sameY = ");
+Serial.println(sameY);
+
+Serial.print("eaten = ");
+Serial.println(eaten);
+
+    if (/*newHead->x == food_x && newHead->y == food_y*/ eaten) { //если координаты головы и координаты еды совпадают
+        my_printf("apple check: Food eaten\r\n");
         if (size == 25) {//проверка на победу
             my_printf("SET endGameCondition = 0\r\n");
             endGameCondition = 0;
         }
         my_printf("Before return false appleNotInHead\r\n");
-        return false;
         placeFood();//размещаем новую еду
+        return false;
     }
+    my_printf("apple check: not eaten\r\n");
     my_printf("Before return true appleNotInHead\r\n");
     return true;
 }
+
 void turnSnake() {//поворот головы змейки
 my_printf("Start turnSnake\r\n");
     if (actualDirection == None) {
@@ -302,14 +341,10 @@ printSnake();
             my_printf("OMG! The Snake is lost outside the space!\r\n");
             my_printf("SET endGameCondition = 2\r\n");
             endGameCondition = 2;
+            return;
         }
-        tempHead->nextElement = head;
-        head->prevElement = tempHead;
-        tempHead->prevElement = NULL;
-        if (appleNotInHead(tempHead)) {
-            delTail();
-        }
-        for (elem *curr = head; curr != NULL && curr != tempHead;) {//проверка на проигрыш
+
+        for (elem *curr = head; curr != NULL;) {//проверка на проигрыш
             if (curr->x == tempHead->x && curr->y == tempHead->y) {
                 my_printf("head = %d,%d\r\n", tempHead->x,tempHead->y);
                 my_printf("body = %d,%d\r\n", curr->x,curr->y);
@@ -322,16 +357,27 @@ printSnake();
             } 
             curr = curr->nextElement;
         }
+
+        bool shouldDelTale = appleNotInHead(tempHead);
+
+        tempHead->nextElement = head;
+        head->prevElement = tempHead;
+        tempHead->prevElement = NULL;
         head = tempHead;
         size++;
+
+        if (shouldDelTale) {
+            delTail();
+        }
+        
         my_printf("printSnake before End moveSnake");
         printSnake();
         my_printf("End moveSnake\r\n");
         return;
 }
 
-const uint8_t MIDDLE_XY = 128;
-const uint8_t OFFSET_XY = 48;
+const /*uint8_t*/int MIDDLE_XY = 512;
+const /*uint8_t*/int OFFSET_XY = 200;
 
 uint32_t start_a       = 0;
 uint32_t start_b       = 0;
@@ -356,31 +402,30 @@ Direction determineDirection(int x, int y) {
         xDir = Direction::None;
     }
     if (y > MIDDLE_XY + OFFSET_XY) {
-        my_printf("End determineDirection\r\n");
         yDir = Direction::Left;
     }
     if (y < MIDDLE_XY - OFFSET_XY) {
-        my_printf("End determineDirection\r\n");
         yDir = Direction::Right;
     }
 
     if (yDir == Direction::None) {
-        my_printf("End determineDirection\r\n");
         return xDir;
     }
     else if (xDir == Direction::None) {
-        my_printf("End determineDirection\r\n");
         return yDir;
     }
     my_printf("End determineDirection\r\n");
+    my_printf("determineDirection input x=%d y=%d\r\n", x, y);
+my_printf("determineDirection result xDir=%d yDir=%d\r\n", xDir, yDir);
     return Direction::None;
 }
 void sosok_direction() {
     my_printf("Start sosok_direction\r\n");
-    uint8_t xAxis = analogRead(VRX);
-    uint8_t yAxis = analogRead(VRY);
-    xAxis         = map(xAxis, 0, 169, 0, 255);
-    yAxis         = map(yAxis, 0, 169, 0, 255);
+    /*uint8_t*/int xAxis = analogRead(VRX);
+    /*uint8_t*/int yAxis = analogRead(VRY);
+    my_printf("Joystick x=%d y=%d\r\n", xAxis, yAxis);
+    //xAxis         = map(xAxis, 0, 169, 0, 255);
+    //yAxis         = map(yAxis, 0, 169, 0, 255);
 
     Direction nowDirection = determineDirection(xAxis, yAxis); // Direction get
     if (nowDirection == Direction::None || actualDirection == nowDirection) {
