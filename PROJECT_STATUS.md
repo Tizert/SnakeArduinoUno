@@ -40,7 +40,7 @@ The goal is not only to make the game work, but to organize it as a maintainable
 - Current branch: main
 - PlatformIO build on new laptop: yes
 - Game builds: yes
-- Game uploads to board: not checked yet
+- Game uploads to board: yes
 - Snake moves: not checked yet
 - Joystick input works: not checked yet
 - Food generation works: not checked yet
@@ -57,6 +57,15 @@ Memory usage:
 - RAM: 216 bytes / 2048 bytes — 10.5%
 - Flash: 2368 bytes / 32256 bytes — 7.3%
 
+## Upload result on new laptop
+
+PlatformIO upload completed successfully.
+
+- Upload port: COM5
+- Target MCU detected by avrdude: ATmega328P
+- Flash written: 9002 bytes
+- Flash verification: successful
+
 ## Known problems
 
 - `PROJECT_STATUS.md` was initially added as an empty file and then filled in a follow-up commit
@@ -66,6 +75,7 @@ Memory usage:
 - Most or all firmware code is currently located in `src/main.cpp`
 - Repository structure needs documentation
 - Minimal refactoring plan is not written yet
+- `src/main.cpp`: `turnSnake()` does not explicitly handle enum value `None` in a `switch` statement.
 
 ## Block 0 goal
 
