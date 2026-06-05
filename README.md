@@ -1,43 +1,46 @@
 # Snake Arduino Uno
 
-Embedded learning project: Snake game on an 8x8 LED matrix controlled by a joystick.
+Snake game for Arduino Uno with an 8x8 LED matrix and joystick control.
 
-## Purpose
-
-This is an early embedded lab project focused on turning a small Arduino game into a maintainable firmware project.
-
-The project is used to practice:
-
-- VS Code
-- PlatformIO
-- Git and GitHub workflow
-- embedded project structure
-- documentation
-- versioning and changelog discipline
-- incremental refactoring without rewriting from scratch
+This is an early embedded learning project. The goal is to practice not only firmware development, but also project organization: PlatformIO, Git, GitHub, documentation, and incremental refactoring.
 
 ## Hardware
 
 - Arduino Uno
-- ATmega328P microcontroller
+- ATmega328P
 - 8x8 LED matrix
 - Joystick module
-- LCD 1602A planned for future use
+- LCD 1602A planned for later
 
-## Software stack
+## Software
 
-- Language: Arduino-style C/C++
-- Editor: VS Code
-- Build system: PlatformIO
-- Platform: Atmel AVR
-- Board target: `uno`
-- Framework: Arduino
+- VS Code
+- PlatformIO
+- Arduino framework
+- C / C++ style code
 
 ## Build
 
-Open the project in VS Code as a folder and use PlatformIO.
+Open the repository folder in VS Code with PlatformIO installed.
 
-Build command:
+Build:
 
 ```bash
 pio run
+```
+
+## Current status
+
+- Build works
+- Upload to board is not checked yet
+- Hardware behavior is not checked yet on the new laptop
+- Most code is currently in `src/main.cpp`
+- Refactoring plan is not written yet
+
+## Next steps
+
+- Check upload to Arduino Uno
+- Check joystick and LED matrix behavior
+- Add wiring notes
+- Add `CHANGELOG.md`
+- Prepare a small refactoring plan
