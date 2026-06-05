@@ -54,6 +54,15 @@ void my_printf(const char *format, ...) {
     // my_printf("X axis is =%d Y axis is %d\r\n", xAxis, yAxis);
 }
 
+void printSnake(){
+    for (elem *curr = head; curr != NULL;){
+        my_printf("(%d,%d)->", curr->x ,curr->y);
+        curr= curr->nextElement;
+    }
+    my_printf("\r\n");
+    return;
+};
+
 void insInTail(elem *el) {//добавление сегмента в хвост списка (змейки)
 my_printf("Start insInTail\r\n");
     if (el == NULL) {
@@ -90,6 +99,8 @@ my_printf("Start placeSnake\r\n");
     insInTail(snakeEl1);
     insInTail(snakeEl2);
     insInTail(snakeEl3);
+    my_printf("printSnake in placeSnake");
+    printSnake();
 my_printf("End placeSnake\r\n");
 }
 
@@ -125,6 +136,7 @@ bool appleNotInHead(elem *head) {//проверка события что зме
 my_printf("Start appleNotInHead\r\n");
     if (head->x == food_x && head->y == food_y) { //если координаты головы и координаты еды совпадают
         if (size == 25) {//проверка на победу
+            my_printf("SET endGameCondition = 0\r\n");
             endGameCondition = 0;
         }
         my_printf("Before return false appleNotInHead\r\n");
@@ -266,8 +278,9 @@ void restartGame(){
 
 void  moveSnake (Direction headDirection) {//движение змейки на один тик
 my_printf("Start moveSnake\r\n");
+my_printf("printSnake in Start moveSnake");
+printSnake();
         elem *tempHead = new elem;
-        head->nextElement = tempHead;
         switch (headDirection) {
             case Direction::Right:
                 tempHead->x = (head->x + 1) % COLUMNS;
@@ -287,16 +300,23 @@ my_printf("Start moveSnake\r\n");
                 break;
             default://если каким-то образм смогли вывести направление в None, выдаем в консоль сообщение и геймовер
             my_printf("OMG! The Snake is lost outside the space!\r\n");
+            my_printf("SET endGameCondition = 2\r\n");
             endGameCondition = 2;
         }
-        tempHead->nextElement = NULL;
-        tempHead->prevElement = head;
+        tempHead->nextElement = head;
+        head->prevElement = tempHead;
+        tempHead->prevElement = NULL;
         if (appleNotInHead(tempHead)) {
             delTail();
         }
-        for (elem *curr = head; curr != NULL;) {//проверка на проигрыш
+        for (elem *curr = head; curr != NULL && curr != tempHead;) {//проверка на проигрыш
             if (curr->x == tempHead->x && curr->y == tempHead->y) {
+                my_printf("head = %d,%d\r\n", tempHead->x,tempHead->y);
+                my_printf("body = %d,%d\r\n", curr->x,curr->y);
+                my_printf("SET endGameCondition = 1\r\n");
                 endGameCondition = 1;
+                my_printf("printSnake before End moveSnake");
+                printSnake();
                 my_printf("End moveSnake\r\n");
                 return;
             } 
@@ -304,6 +324,8 @@ my_printf("Start moveSnake\r\n");
         }
         head = tempHead;
         size++;
+        my_printf("printSnake before End moveSnake");
+        printSnake();
         my_printf("End moveSnake\r\n");
         return;
 }
