@@ -17,8 +17,8 @@
 #define VRY    A1
 
 struct elem {
-    uint32_t x;
-    uint32_t y;
+    uint8_t x;
+    uint8_t y;
     elem *nextElement;
     elem *prevElement;
 };
@@ -41,6 +41,197 @@ uint32_t endGameCondition = 3;
 enum Direction { None, Up, Down, Left, Right };
 Direction actualDirection = Direction::None;
 Direction headDirection = Direction::Right;
+Direction currentDirection = Direction::None;
+
+bool isFoodAt(const elem *el){//проверка что элемент на еде
+    if (el == NULL) {
+        return false;
+    }
+    return el->x == food_x && el->y == food_y;
+}
+
+bool isPositionOnSnake(uint8_t tempX, uint8_t tempY){//проверка что координаты находятся на теле змейки
+    for (elem *curr = head; curr != NULL;){
+        if (curr->x == tempX && curr->y == tempY){
+            return true;
+        }
+        curr = curr->nextElement;
+    }
+    return false;
+}
+
+bool collidesWithSnake(const elem *el){//проверка что элемент совпадает с телом змейки
+    if (el == NULL) {
+        return false;
+    }
+    return isPositionOnSnake(el->x, el->y);
+}
+
+void insertHead(elem *newHead){//добавление тела змейки, в голову
+    if (newHead == NULL){
+        return;
+    }
+    if (head == NULL){
+        newHead->nextElement = NULL;
+        newHead->prevElement = NULL;
+        head = newHead;
+        tail = newHead;
+        size++;
+        return;
+    }
+    newHead->prevElement = NULL;
+    newHead->nextElement = head;
+    head->prevElement = newHead;
+    head = newHead;
+    size++;
+}
+
+void removeTail(){//удалить последний элемент змейки, хвост
+    if (tail == NULL){
+        return;
+    }
+    if (size == 1){
+        delete head;
+        head = NULL;
+        tail = NULL;
+        size = 0;
+        return;
+    }
+    elem *oldTail = tail;
+    tail = tail->prevElement;
+    tail->nextElement = NULL;
+    size--;
+    delete oldTail;
+    oldTail = NULL;
+}
+
+elem *createNextHead(Direction direction){//создание элемента-претендента на новую голову, присваивание им (x.y)
+    if (head == NULL || direction == Direction::None){
+        return NULL;
+    }
+    uint8_t newX = 0;
+    uint8_t newY = 0;
+    switch (direction)
+    {
+    case Direction::Right:
+        newX = (head->x + 1) % COLUMNS;
+        newY = head->y;
+        break;
+    case Direction::Down:
+        newX = head->x;
+        newY = (head->y + 1) % ROWS;
+        break;
+    case Direction::Left:
+        newX = (head->x == 0 ? COLUMNS - 1 : head->x - 1);
+        newY = head->y;
+        break;
+    case Direction::Up:
+        newX = head->x;
+        newY = (head->y == 0 ? ROWS - 1 : head->y -1);
+        break;
+    default:
+        return NULL;
+    }
+    elem *newHead = new elem;
+    newHead->x = newX;
+    newHead->y = newY;
+    return newHead;
+}
+
+bool isOppositeDirection(Direction current, Direction requested){//определяется разворот на 180
+    if (current == Direction::Left){
+        return requested == Direction::Right;
+    }
+    if (current == Direction::Right){
+        return requested == Direction::Left;
+    }
+    if (current == Direction::Up){
+        return requested == Direction::Down;
+    }
+    if (current == Direction::Down){
+        return requested == Direction::Up;
+    }
+    return false;
+}
+
+Direction resolveDirection(Direction current, Direction requested){//обработка изменения направления
+    if (requested == Direction::None || current == requested || isOppositeDirection(current, requested)){
+        return current;
+    }
+    return requested;
+}
+
+bool isValidBoardPosition(uint8_t tX, uint8_t tY){
+    return tX < COLUMNS && tY < ROWS;
+}
+
+
+void placeFood(){//определение новых координат для еды
+    Serial.print("Start placeFood");
+    if (size >= COLUMNS * ROWS) {
+        return;
+    }
+    uint8_t candidateX = random(0,COLUMNS);
+    uint8_t candidateY = random(0,ROWS);
+    while (isPositionOnSnake(candidateX,candidateY)){
+        candidateX = random(0,COLUMNS);
+        candidateY = random(0,ROWS);
+    }
+    food_x = candidateX;
+    food_y = candidateY;
+
+    Serial.print("Food placed: ");
+    Serial.print(food_x);
+    Serial.print(",");
+    Serial.println(food_y);
+    
+    return;
+}
+
+void moveSnake(Direction requested){
+    Direction resolvedDirection = resolveDirection(currentDirection, requested);
+    if (resolvedDirection == Direction::None) {
+        return;
+    }
+
+    elem *newHead = createNextHead(resolvedDirection);
+
+    if (newHead == NULL){
+        Serial.print("Invalid head state");
+        endGameCondition = 2;
+        return;
+    }
+
+    if (!isValidBoardPosition(newHead->x,newHead->y)){
+        Serial.print("Incorrect head position");
+        endGameCondition = 2;
+        delete newHead;
+        newHead = NULL;
+        return;
+    }
+
+    currentDirection = resolvedDirection;
+
+    if (collidesWithSnake(newHead)){
+        Serial.print("Game over");
+        endGameCondition = 1;
+        delete newHead;
+        newHead = NULL;
+        return;
+    }
+    bool ateFood = isFoodAt(newHead);
+    insertHead(newHead);
+    if (ateFood) {
+        if (size == COLUMNS * ROWS){
+            endGameCondition = 0;
+            return;
+        }
+        placeFood();
+    } else {
+        removeTail();
+    }
+}
+
 
 void my_printf(const char *format, ...) {
     const uint8_t MAX_STRING_SIZE = 64;
@@ -56,8 +247,33 @@ void my_printf(const char *format, ...) {
 
 void printSnake(){
     uint8_t count = 0;
+        if (head != NULL) {
+            Serial.print("HEAD = ");
+            Serial.print(head->x);
+            Serial.print(",");
+            Serial.println(head->y);
+        } else {
+            Serial.println("HEAD = NULL");
+        }
+
+        if (tail != NULL) {
+            Serial.print("TAIL = ");
+            Serial.print(tail->x);
+            Serial.print(",");
+            Serial.println(tail->y);
+        } else {
+            Serial.println("TAIL = NULL");
+        }
     for (elem *curr = head; curr != NULL && count < 20;){
-        my_printf("(%d,%d)->", curr->x ,curr->y);
+        if (curr) {
+            Serial.print("CURR = ");
+            Serial.print(curr->x);
+            Serial.print(",");
+            Serial.println(curr->y);
+        } else {
+            Serial.println("CURR = NULL");
+        }
+
         curr= curr->nextElement;
         count++;
     }
@@ -67,28 +283,6 @@ void printSnake(){
     }
     return;
 };
-
-void insInTail(elem *el) {//добавление сегмента в хвост списка (змейки)
-my_printf("Start insInTail\r\n");
-    if (el == NULL) {
-        return;
-    }
-    if (head == NULL) {
-        el->nextElement = NULL;
-        el->prevElement = NULL;
-        head            = el;
-        tail            = el;
-        size            = 1;
-    }
-    else {
-        el->nextElement   = NULL;
-        el->prevElement   = tail;
-        tail->nextElement = el;
-        tail              = el;
-        size++;
-    }
-my_printf("End insInTail\r\n");
-}
 
 void placeSnake(void) {
 my_printf("Start placeSnake\r\n");
@@ -101,133 +295,15 @@ my_printf("Start placeSnake\r\n");
     snakeEl2->y    = 0;    //
     snakeEl1->x    = 2; // голова первоначальной змейки
     snakeEl1->y    = 0;    //
-    insInTail(snakeEl1);
-    insInTail(snakeEl2);
-    insInTail(snakeEl3);
+    insertHead(snakeEl3);
+    insertHead(snakeEl2);
+    insertHead(snakeEl1);
+    currentDirection = Direction::Right;
     my_printf("printSnake in placeSnake");
     printSnake();
 my_printf("End placeSnake\r\n");
 }
 
-void placeFood(void) {//генерация еды на поле
-my_printf("Start placeFood\r\n");
-    for (elem *curr = head; curr != NULL;) {//проверка что еда не внутри тела змейки
-        if ((curr->x == food_x) && (curr->y == food_y)) {
-            food_x = random(0, COLUMNS);
-            food_y = random(0, ROWS);
-            curr   = head;
-            continue;
-        }
-        curr = curr->nextElement;
-    }
-my_printf("Before return curr placeFood\r\nNew food %d,%d\r\n", food_x, food_y);
-    return;
-}
-
-void delTail(void) {//удаление сегмента из хвоста
-my_printf("Start delTail\r\n");
-    if (tail == NULL) {
-        return;
-    }
-    else {
-        tail              = tail->prevElement;
-        tail->nextElement = NULL;
-        size--;
-    }
-my_printf("End delTail\r\n");
-}
-
-bool appleNotInHead(elem *newHead) {//проверка события что змейка съела яблоко и прирост тела
-my_printf("Start appleNotInHead\r\n");
-
-int newHeadX = newHead->x;
-int newHeadY = newHead->y;
-int currentFoodX = food_x;
-int currentFoodY = food_y;
-
-bool sameX = (newHeadX == currentFoodX);
-bool sameY = (newHeadY == currentFoodY);
-bool eaten = sameX && sameY;
-
-Serial.print("newHeadX = ");
-Serial.println(newHeadX);
-
-Serial.print("newHeadY = ");
-Serial.println(newHeadY);
-
-Serial.print("currentFoodX = ");
-Serial.println(currentFoodX);
-
-Serial.print("currentFoodY = ");
-Serial.println(currentFoodY);
-
-Serial.print("sameX = ");
-Serial.println(sameX);
-
-Serial.print("sameY = ");
-Serial.println(sameY);
-
-Serial.print("eaten = ");
-Serial.println(eaten);
-
-    if (/*newHead->x == food_x && newHead->y == food_y*/ eaten) { //если координаты головы и координаты еды совпадают
-        my_printf("apple check: Food eaten\r\n");
-        if (size == 25) {//проверка на победу
-            my_printf("SET endGameCondition = 0\r\n");
-            endGameCondition = 0;
-        }
-        my_printf("Before return false appleNotInHead\r\n");
-        placeFood();//размещаем новую еду
-        return false;
-    }
-    my_printf("apple check: not eaten\r\n");
-    my_printf("Before return true appleNotInHead\r\n");
-    return true;
-}
-
-void turnSnake() {//поворот головы змейки
-my_printf("Start turnSnake\r\n");
-    if (actualDirection == None) {
-        my_printf("Before return turnSnake\r\n");
-        return;
-    } else {switch (headDirection) {//смена направления движения в зависимости от начального направления и положения соска
-    //надо оптимизировать 100%
-        case Direction::Up:
-            if (actualDirection == Direction::Right){
-                headDirection = Direction::Right;
-            }
-            if (actualDirection == Direction::Left){
-                headDirection = Direction::Left;
-            }
-            break;
-        case Direction::Right:
-            if (actualDirection == Direction::Right){
-                headDirection = Direction::Down;
-            }
-            if (actualDirection == Direction::Left){
-                headDirection = Direction::Up;
-            }
-            break;
-        case Direction::Down:
-            if (actualDirection == Direction::Right){
-                headDirection = Direction::Left;
-            }
-            if (actualDirection == Direction::Left){
-                headDirection = Direction::Right;
-            }
-            break;
-        case Direction::Left:
-            if (actualDirection == Direction::Right){
-                headDirection = Direction::Up;
-            }
-            if (actualDirection == Direction::Left){
-                headDirection = Direction::Down;
-            }
-            break;
-        }    
-    }
-    my_printf("End turnSnake\r\n");
-}
 
 void led_matrix(uint8_t c, uint8_t r) {
     pinMode(d_rows[r], OUTPUT);
@@ -313,67 +389,6 @@ void restartGame(){
     my_printf("Start restartGame\r\n");
     //добавить перезапуск игрв по нажатию стика
     my_printf("End restartGame\r\n");
-}
-
-void  moveSnake (Direction headDirection) {//движение змейки на один тик
-my_printf("Start moveSnake\r\n");
-my_printf("printSnake in Start moveSnake");
-printSnake();
-        elem *tempHead = new elem;
-        switch (headDirection) {
-            case Direction::Right:
-                tempHead->x = (head->x + 1) % COLUMNS;
-                tempHead->y = head->y;
-                break;
-            case Direction::Down:
-                tempHead->x = head->x;
-                tempHead->y = (head->y + 1) % ROWS;
-                break;
-            case Direction::Left:
-                tempHead->x = (head->x == 0 ? COLUMNS - 1 : head->x - 1);
-                tempHead->y = head->y;
-                break;
-            case Direction::Up:
-                tempHead->x = head->x;
-                tempHead->y = (head->y == 0 ? ROWS - 1 : head->y -1);
-                break;
-            default://если каким-то образм смогли вывести направление в None, выдаем в консоль сообщение и геймовер
-            my_printf("OMG! The Snake is lost outside the space!\r\n");
-            my_printf("SET endGameCondition = 2\r\n");
-            endGameCondition = 2;
-            return;
-        }
-
-        for (elem *curr = head; curr != NULL;) {//проверка на проигрыш
-            if (curr->x == tempHead->x && curr->y == tempHead->y) {
-                my_printf("head = %d,%d\r\n", tempHead->x,tempHead->y);
-                my_printf("body = %d,%d\r\n", curr->x,curr->y);
-                my_printf("SET endGameCondition = 1\r\n");
-                endGameCondition = 1;
-                my_printf("printSnake before End moveSnake");
-                printSnake();
-                my_printf("End moveSnake\r\n");
-                return;
-            } 
-            curr = curr->nextElement;
-        }
-
-        bool shouldDelTale = appleNotInHead(tempHead);
-
-        tempHead->nextElement = head;
-        head->prevElement = tempHead;
-        tempHead->prevElement = NULL;
-        head = tempHead;
-        size++;
-
-        if (shouldDelTale) {
-            delTail();
-        }
-        
-        my_printf("printSnake before End moveSnake");
-        printSnake();
-        my_printf("End moveSnake\r\n");
-        return;
 }
 
 const /*uint8_t*/int MIDDLE_XY = 512;
@@ -485,15 +500,14 @@ void loop() {
         }
 
         if (millis() - start_b >= 200) {
-            turnSnake();
-            moveSnake(headDirection);
+            moveSnake(actualDirection);
             start_b = millis();
         }
         
         lightSnakeAndFood();
     } else if (millis() - start_end_game >= 500) {
         if (size > 0) {
-            delTail();
+            removeTail();
             start_end_game = millis();
         } else if (millis()/500%2) {
             if(endGameCondition == 0) {
