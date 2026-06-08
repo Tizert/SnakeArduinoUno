@@ -39,9 +39,11 @@ uint8_t d_rows[]    = {LED_R1, LED_R2, LED_R3, LED_R4, LED_R5};
 uint32_t endGameCondition = 3;
 
 enum Direction { None, Up, Down, Left, Right };
-Direction actualDirection = Direction::None;
-Direction headDirection = Direction::Right;
+Direction requestedDirection = Direction::None;
 Direction currentDirection = Direction::None;
+
+const int MIDDLE_XY = 512;
+const int OFFSET_XY = 200;
 
 bool isFoodAt(const elem *el){//проверка что элемент на еде
     if (el == NULL) {
@@ -103,6 +105,31 @@ void removeTail(){//удалить последний элемент змейк�
     size--;
     delete oldTail;
     oldTail = NULL;
+}
+
+Direction readJoystickDirection(){
+    int xAxis = analogRead(VRX);
+    int yAxis = analogRead(VRY);
+    int16_t dX = abs(xAxis-MIDDLE_XY);
+    int16_t dY = abs(yAxis-MIDDLE_XY);
+    if (dX <= OFFSET_XY && dY <= OFFSET_XY){
+        return Direction::None;
+    }
+    if (dX >= dY) {
+        if ((xAxis > MIDDLE_XY + OFFSET_XY)){
+            return Direction::Down;
+        } else {
+            return Direction::Up;
+        }
+    } else {
+        if ((yAxis > MIDDLE_XY + OFFSET_XY)){
+            return Direction::Right;
+        } else {
+            return Direction::Left;
+        }
+    }
+    Serial.println("Error: Can't read Direction");
+    return Direction::None;
 }
 
 elem *createNextHead(Direction direction){//создание элемента-претендента на новую голову, присваивание им (x.y)
@@ -188,51 +215,6 @@ void placeFood(){//определение новых координат для �
     return;
 }
 
-void moveSnake(Direction requested){
-    Direction resolvedDirection = resolveDirection(currentDirection, requested);
-    if (resolvedDirection == Direction::None) {
-        return;
-    }
-
-    elem *newHead = createNextHead(resolvedDirection);
-
-    if (newHead == NULL){
-        Serial.print("Invalid head state");
-        endGameCondition = 2;
-        return;
-    }
-
-    if (!isValidBoardPosition(newHead->x,newHead->y)){
-        Serial.print("Incorrect head position");
-        endGameCondition = 2;
-        delete newHead;
-        newHead = NULL;
-        return;
-    }
-
-    currentDirection = resolvedDirection;
-
-    if (collidesWithSnake(newHead)){
-        Serial.print("Game over");
-        endGameCondition = 1;
-        delete newHead;
-        newHead = NULL;
-        return;
-    }
-    bool ateFood = isFoodAt(newHead);
-    insertHead(newHead);
-    if (ateFood) {
-        if (size == COLUMNS * ROWS){
-            endGameCondition = 0;
-            return;
-        }
-        placeFood();
-    } else {
-        removeTail();
-    }
-}
-
-
 void my_printf(const char *format, ...) {
     const uint8_t MAX_STRING_SIZE = 64;
     char buf[MAX_STRING_SIZE];
@@ -283,6 +265,69 @@ void printSnake(){
     }
     return;
 };
+
+void moveSnake(Direction requested){
+
+    Serial.println("=== moveSnake ===");
+    Serial.print("size before = ");
+    Serial.println(size);
+    printSnake();
+
+    Direction resolvedDirection = resolveDirection(currentDirection, requested);
+    if (resolvedDirection == Direction::None) {
+        return;
+    }
+
+    elem *newHead = createNextHead(resolvedDirection);
+
+    Serial.print("newHead = ");
+    Serial.print(newHead->x);
+    Serial.print(",");
+    Serial.println(newHead->y);
+
+    if (newHead == NULL){
+        Serial.print("Invalid head state");
+        endGameCondition = 2;
+        return;
+    }
+
+    if (!isValidBoardPosition(newHead->x,newHead->y)){
+        Serial.print("Incorrect head position");
+        endGameCondition = 2;
+        delete newHead;
+        newHead = NULL;
+        return;
+    }
+    
+    currentDirection = resolvedDirection;
+
+    if (collidesWithSnake(newHead)){
+        Serial.print("Game over");
+        endGameCondition = 1;
+        delete newHead;
+        newHead = NULL;
+        return;
+    }
+    bool ateFood = isFoodAt(newHead);
+
+    Serial.print("ateFood = ");
+    Serial.println(ateFood);
+
+    insertHead(newHead);
+    if (ateFood) {
+        if (size == COLUMNS * ROWS){
+            endGameCondition = 0;
+            return;
+        }
+        placeFood();
+    } else {
+        removeTail();
+    }
+
+    Serial.print("size after = ");
+    Serial.println(size);
+    printSnake();
+}
 
 void placeSnake(void) {
 my_printf("Start placeSnake\r\n");
@@ -391,9 +436,6 @@ void restartGame(){
     my_printf("End restartGame\r\n");
 }
 
-const /*uint8_t*/int MIDDLE_XY = 512;
-const /*uint8_t*/int OFFSET_XY = 200;
-
 uint32_t start_a       = 0;
 uint32_t start_b       = 0;
 uint32_t start_end_game= 0;
@@ -402,64 +444,12 @@ uint8_t last_direction = 0;
 uint8_t currRow = 0;
 uint8_t currCol = 0;
 
-Direction determineDirection(int x, int y) {
-    my_printf("Start determineDirection\r\n");
-    Direction xDir = Direction::None;
-    Direction yDir = Direction::None;
-    if (x > MIDDLE_XY + OFFSET_XY) {
-        //возможно неверно
-        //xDir = Direction::Up; //змейка умеет только поворачивать влево-вправо
-        xDir = Direction::None;
-    }
-    if (x < MIDDLE_XY - OFFSET_XY) {
-        //возможно неверно
-        //xDir = Direction::Down; //змейка умеет только поворачивать влево-вправо
-        xDir = Direction::None;
-    }
-    if (y > MIDDLE_XY + OFFSET_XY) {
-        yDir = Direction::Left;
-    }
-    if (y < MIDDLE_XY - OFFSET_XY) {
-        yDir = Direction::Right;
-    }
-
-    if (yDir == Direction::None) {
-        return xDir;
-    }
-    else if (xDir == Direction::None) {
-        return yDir;
-    }
-    my_printf("End determineDirection\r\n");
-    my_printf("determineDirection input x=%d y=%d\r\n", x, y);
-my_printf("determineDirection result xDir=%d yDir=%d\r\n", xDir, yDir);
-    return Direction::None;
-}
-void sosok_direction() {
-    my_printf("Start sosok_direction\r\n");
-    /*uint8_t*/int xAxis = analogRead(VRX);
-    /*uint8_t*/int yAxis = analogRead(VRY);
-    my_printf("Joystick x=%d y=%d\r\n", xAxis, yAxis);
-    //xAxis         = map(xAxis, 0, 169, 0, 255);
-    //yAxis         = map(yAxis, 0, 169, 0, 255);
-
-    Direction nowDirection = determineDirection(xAxis, yAxis); // Direction get
-    if (nowDirection == Direction::None || actualDirection == nowDirection) {
-        my_printf("End sosok_direction\r\n");
-        return;
-    }
-
-    my_printf("Changed direction from %d, to %d\r\n", actualDirection, nowDirection);
-    actualDirection = nowDirection;
-}
-
 void lightSnakeAndFood(void) {
-    my_printf("Start lightSnakeAndFood\r\n");
     for (elem *curr = head; curr!=NULL;){
         led_matrix(curr->x, curr->y);
         curr = curr->nextElement;
     }
     led_matrix(food_x, food_y);
-    my_printf("End lightSnakeAndFood\r\n");
 }
 
 void offLed(void) {
@@ -494,13 +484,13 @@ void setup() {
 
 void loop() {
     if (endGameCondition == 3) {
-        if (millis() - start_a >= 100) {
-            sosok_direction();
+        if (millis() - start_a >= 250) {
+            requestedDirection = readJoystickDirection();
             start_a = millis();
         }
 
-        if (millis() - start_b >= 200) {
-            moveSnake(actualDirection);
+        if (millis() - start_b >= 500) {
+            moveSnake(requestedDirection);
             start_b = millis();
         }
         
