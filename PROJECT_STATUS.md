@@ -10,7 +10,7 @@ The goal is not only to make the game work, but to organize it as a maintainable
 
 - Board: Arduino Uno
 - MCU: ATmega328P
-- LED matrix: 8x8
+- LED matrix: 8x8 (Current active game field: 5x5)
 - Input: joystick module
 - Optional future module: LCD 1602A
 
@@ -42,10 +42,10 @@ The goal is not only to make the game work, but to organize it as a maintainable
 - Game builds: yes
 - Game uploads to board: yes
 - LED matrix works: yes
-- Snake starts: no
-- Joystick input works: not verified
-- Food generation works: not verified
-- Collision detection works: not verified
+- Snake starts: yes
+- Joystick input works: yes
+- Food generation works: yes
+- Collision detection works: yes
 - Score exists: not verified
 - LCD support exists: planned
 
@@ -72,16 +72,6 @@ PlatformIO upload completed successfully.
 - Project versioning is not formalized yet
 - Most or all firmware code is currently located in `src/main.cpp`
 - Repository structure needs documentation
-- Minimal refactoring plan is not written yet
-- `src/main.cpp`: `turnSnake()` does not explicitly handle enum value `None` in a `switch` statement.
-- Current firmware builds and uploads, but the game does not start correctly on hardware.
-- After startup, the game appears to enter the losing screen/state immediately.
-- Several gameplay mechanisms exist in code, but their integration needs verification:
-  - food generation
-  - snake body tracking
-  - direction handling
-  - food eating check
-  - win/lose screen rendering
 
 ## Block 0 goal
 

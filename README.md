@@ -40,6 +40,11 @@ pio run
 - Most code is currently in `src/main.cpp`
 - Refactoring plan is not written yet
 
+## Documentation
+
+- [Changelog](CHANGELOG.md)
+- [Current project status](PROJECT_STATUS.md)
+
 ## Next steps
 
 - Check joystick and LED matrix behavior on real hardware
