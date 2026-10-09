@@ -46,55 +46,59 @@ GameState gameState = GameState::WaitingStart;
 uint8_t flashCount = 0;
 boolean ledOn = false;
 
-uint32_t timerWaitingStart= 0;
+uint32_t timerGameState = 0; 
 uint32_t timerInput= 0;
 uint32_t timerMovement= 0;
-uint32_t timerLose= 0;
-uint32_t timerWin= 0;
-uint32_t timerError= 0;
 
 const int MIDDLE_XY = 512;
 const int OFFSET_XY = 200;
 
-bool isFoodAt(const elem *el){//проверка что элемент на еде
-    if (el == NULL) {
-        return false;
-    }
-    return el->x == food_x && el->y == food_y;
+bool isFoodAt(uint8_t tempX, uint8_t tempY){//проверка что элемент на еде
+    return tempX == food_x && tempY == food_y;
+}
+bool isTailAt(uint8_t tempX, uint8_t tempY){
+    return tempX == tail->x && tempY == tail->y;
 }
 
 bool isPositionOnSnake(uint8_t tempX, uint8_t tempY){//проверка что координаты находятся на теле змейки
-    for (elem *curr = head; curr != NULL;){
+    for (elem *curr = head; curr != NULL;curr = curr->nextElement){
         if (curr->x == tempX && curr->y == tempY){
             return true;
         }
-        curr = curr->nextElement;
     }
     return false;
 }
 
-bool collidesWithSnake(const elem *el){//проверка что элемент совпадает с телом змейки
-    if (el == NULL) {
-        return false;
-    }
-    return isPositionOnSnake(el->x, el->y);
+void replaceTailToHead(uint8_t tempX, uint8_t tempY){
+    elem *oldTail = tail;
+    tail = oldTail->prevElement;
+    tail->nextElement = NULL;
+    oldTail->prevElement = NULL;
+    oldTail->nextElement = head;
+    head->prevElement = oldTail;
+    head = oldTail;
+    head->x = tempX;
+    head->y = tempY;
+    return;
 }
 
-void insertHead(elem *newHead){//добавление тела змейки, в голову
-    if (newHead == NULL){
-        return;
-    }
+void insertHead(uint8_t tempX, uint8_t tempY){//добавление тела змейки, в голову
     if (head == NULL){
-        newHead->nextElement = NULL;
-        newHead->prevElement = NULL;
-        head = newHead;
-        tail = newHead;
+        head = new elem;
+        head->nextElement = NULL;
+        head->prevElement = NULL;
+        head->x = tempX;
+        head->y = tempY;
+        tail = head;
         size++;
         return;
     }
-    newHead->prevElement = NULL;
+    elem *newHead = new elem;
     newHead->nextElement = head;
     head->prevElement = newHead;
+    newHead->prevElement = NULL;
+    newHead->x = tempX;
+    newHead->y = tempY;
     head = newHead;
     size++;
 }
@@ -143,37 +147,31 @@ Direction readJoystickDirection(){
     return Direction::None;
 }
 
-elem *createNextHead(Direction direction){//создание элемента-претендента на новую голову, присваивание им (x.y)
+    void createNextHeadCoordinates(Direction direction, uint8_t &tempX, uint8_t &tempY){
+    //создание претендента на новую голову, присваивание (x.y)
     if (head == NULL || direction == Direction::None){
-        return NULL;
+        return;
     }
-    uint8_t newX = 0;
-    uint8_t newY = 0;
+    tempX = head->x;
+    tempY = head->y;
     switch (direction)
     {
     case Direction::Right:
-        newX = (head->x + 1) % COLUMNS;
-        newY = head->y;
+        tempX = (head->x + 1) % COLUMNS;
         break;
     case Direction::Down:
-        newX = head->x;
-        newY = (head->y + 1) % ROWS;
+        tempY = (head->y + 1) % ROWS;
         break;
     case Direction::Left:
-        newX = (head->x == 0 ? COLUMNS - 1 : head->x - 1);
-        newY = head->y;
+        tempX = (head->x == 0 ? COLUMNS - 1 : head->x - 1);
         break;
     case Direction::Up:
-        newX = head->x;
-        newY = (head->y == 0 ? ROWS - 1 : head->y -1);
+        tempY = (head->y == 0 ? ROWS - 1 : head->y -1);
         break;
     default:
-        return NULL;
+        return;
     }
-    elem *newHead = new elem;
-    newHead->x = newX;
-    newHead->y = newY;
-    return newHead;
+    return;
 }
 
 bool isOppositeDirection(Direction current, Direction requested){//определяется разворот на 180
@@ -239,45 +237,6 @@ void my_printf(const char *format, ...) {
     // my_printf("X axis is =%d Y axis is %d\r\n", xAxis, yAxis);
 }
 
-void printSnake(){
-    uint8_t count = 0;
-        if (head != NULL) {
-            Serial.print("HEAD = ");
-            Serial.print(head->x);
-            Serial.print(",");
-            Serial.println(head->y);
-        } else {
-            Serial.println("HEAD = NULL");
-        }
-
-        if (tail != NULL) {
-            Serial.print("TAIL = ");
-            Serial.print(tail->x);
-            Serial.print(",");
-            Serial.println(tail->y);
-        } else {
-            Serial.println("TAIL = NULL");
-        }
-    for (elem *curr = head; curr != NULL && count < 20;){
-        if (curr) {
-            Serial.print("CURR = ");
-            Serial.print(curr->x);
-            Serial.print(",");
-            Serial.println(curr->y);
-        } else {
-            Serial.println("CURR = NULL");
-        }
-
-        curr= curr->nextElement;
-        count++;
-    }
-    my_printf("\r\n");
-    if (count == 20){
-        Serial.print("printSnake stopped: possible cycle\r\n");
-    }
-    return;
-}
-
 void offLed(void) {
     my_printf("Start offLed\r\n");
     pinMode(LED_C1, INPUT);
@@ -294,98 +253,52 @@ void offLed(void) {
     my_printf("End offLed\r\n");
 }
 
-void enterErrorState(void){
-    offLed();
+void enterGameState(GameState state){
     flashCount = 0;
     ledOn = false;
-    timerError = millis();
-    food_x = NULL;
-    food_y = NULL;
-    
-    gameState = GameState::Error;
-}
-
-void enterLoseState(void){
-    flashCount = 0;
-    ledOn = false;
-    timerLose = millis();
-    food_x = NULL;
-    food_y = NULL;
-    
-    gameState = GameState::Lose;
-}
-
-void enterWinState(void){
-    flashCount = 0;
-    ledOn = false;
-    timerWin = millis();
-    food_x = NULL;
-    food_y = NULL;
-    
-    gameState = GameState::Win;
+    timerGameState = millis();
+    gameState = state;
 }
 
 void moveSnake(Direction requested){
 
     Serial.println("=== moveSnake ===");
-    Serial.print("size before = ");
-    Serial.println(size);
-    printSnake();
-
     Direction resolvedDirection = resolveDirection(currentDirection, requested);
     if (resolvedDirection == Direction::None) {
         return;
     }
+    uint8_t newX = 0;
+    uint8_t newY = 0;
+    createNextHeadCoordinates(resolvedDirection, newX, newY);
 
-    elem *newHead = createNextHead(resolvedDirection);
-
-    if (newHead == NULL){
-        Serial.print("Invalid head state");
-        enterErrorState();
-        return;
-    }
-
-    Serial.print("newHead = ");
-    Serial.print(newHead->x);
-    Serial.print(",");
-    Serial.println(newHead->y);
-
-    if (!isValidBoardPosition(newHead->x,newHead->y)){
+    if (!isValidBoardPosition(newX,newY)){
         Serial.print("Incorrect head position");
-        delete newHead;
-        newHead = NULL;
-        enterErrorState();
+        offLed();
+        enterGameState(GameState::Error);
         return;
     }
     
     currentDirection = resolvedDirection;
 
-    if (collidesWithSnake(newHead)){
-        Serial.print("Game over");
-        delete newHead;
-        newHead = NULL;
-        enterLoseState();
+    bool ateFood = isFoodAt(newX, newY);
+    bool onTail = isTailAt(newX, newY);
+
+    if (isPositionOnSnake(newX, newY) && (ateFood || !onTail)) {
+        enterGameState(GameState::Lose);
         return;
     }
-    bool ateFood = isFoodAt(newHead);
 
-    Serial.print("ateFood = ");
-    Serial.println(ateFood);
-
-    insertHead(newHead);
     if (ateFood) {
-        if (size == COLUMNS * ROWS){
-            enterWinState();
+        if (size + 1 == COLUMNS * ROWS){
+            enterGameState(GameState::Win);
             return;
         }
+        insertHead(newX, newY);
         placeFood();
+        return;
     } else {
-        removeTail();
+        replaceTailToHead(newX, newY);
     }
-
-    Serial.print("size after = ");
-    Serial.println(size);
-    printSnake();
 }
 
 void placeSnake(void)
@@ -393,13 +306,8 @@ void placeSnake(void)
     my_printf("Start placeSnake\r\n");
     for (int i = 0; i < 3; i++)
     {
-        elem *snakeEl = new elem;
-        snakeEl->x = i; // хвост первоначальной змейки
-        snakeEl->y = 0; //
-        insertHead(snakeEl);
+        insertHead(i,0);
     }
-    my_printf("printSnake in placeSnake");
-    printSnake();
     my_printf("End placeSnake\r\n");
 }
 
@@ -436,12 +344,9 @@ void restartGame(){
     placeSnake();
     placeFood();
     uint32_t now = millis();
-    timerWaitingStart= now;
+    timerGameState = now;
     timerInput= now;
     timerMovement= now;
-    timerLose= now;
-    timerWin= now;
-    timerError= now;
     gameState = GameState::WaitingStart;
 }
 
@@ -479,16 +384,15 @@ void drawErrorE (void){
     led_matrix(3, 2);
     led_matrix(2, 2);
     led_matrix(3, 4);
-    led_matrix(2, 5);
+    led_matrix(2, 4);
 }
 
 void handleWaitingStart(){
     lightSnakeAndFood();
     uint32_t now = millis();
-    if (now < 250) {
+    if (now - timerGameState < 250) {
         return;
     }
-    timerWaitingStart = now;
     requestedDirection = readJoystickDirection();
     if (requestedDirection == Direction::None) {
             return;
@@ -520,19 +424,19 @@ void handleRunning(){
     }
 }
 
-void handleWin(){
+void handleEndGame(void drawPicture()){
     if (size > 0){
         lightSnakeAndFood();
     } else {
         if (ledOn == true) {
-            drawWinCheckmark();
+            drawPicture();
         }
     }
     uint32_t now = millis();
     if (flashCount > 3) {
         return;
     }
-    if (now - timerWin >= 500) {
+    if (now - timerGameState >= 500) {
         if (size > 0) {
             removeTail();
             offLed();
@@ -545,36 +449,7 @@ void handleWin(){
                 ledOn = true;
             }
         }
-        timerWin = now;
-    }
-}
-
-void handleLose(){
-    if (size > 0){
-        lightSnakeAndFood();
-    } else {
-        if (ledOn == true) {
-            drawLoseCross();
-        }
-    }
-    uint32_t now = millis();
-    if (flashCount > 3) {
-        return;
-    }
-    if (now - timerLose >= 500) {
-        if (size > 0) {
-            removeTail();
-            offLed();
-        } else {
-            if (ledOn == true){
-                offLed();
-                ledOn = false;
-                flashCount++;
-            } else {
-                ledOn = true;
-            }
-        }
-        timerLose = now;
+        timerGameState = now;
     }
 }
 
@@ -586,7 +461,7 @@ void handleError(){
     if (flashCount > 3) {
         return;
     }
-    if (now - timerError >= 500) {
+    if (now - timerGameState >= 500) {
         if (ledOn == true){
                 offLed();
                 ledOn = false;
@@ -594,7 +469,7 @@ void handleError(){
             } else {
                 ledOn = true;
             }
-        timerError = now;
+        timerGameState = now;
     }
 }
 
@@ -625,10 +500,10 @@ void loop() {
         handleRunning();
         break;
     case GameState::Lose:
-        handleLose();
+        handleEndGame(drawLoseCross);
         break;
     case GameState::Win:
-        handleWin();
+        handleEndGame(drawWinCheckmark);
         break;
     case GameState::Error:
         handleError();
